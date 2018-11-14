@@ -1,0 +1,239 @@
+//Initialize
+set more off
+set trace off
+clear
+
+//Macros
+{
+//Filepaths
+global longleaf "/proj/schleduc/"
+global wake "${longleaf}wake/"
+global logs "${wake}logs/"
+global data "${wake}data/"
+global fromwake "${data}original_xfer/"
+global scratch "${wake}scratch/"
+
+//Tempfiles
+tempfile nodes
+tempfile schcars
+}
+
+cap log close
+cap log using "${logs}AEFP_Data_Clean.txt", text replace
+
+cap ssc install unique
+
+//Clean Nodes for Merge
+use "${fromwake}nodes_2000_2014.dta", clear
+
+destring yr, gen(year)
+destring nodeid, gen(node_num)
+
+egen obs = group(nodeid)
+
+//Macros for school variables (from node file)
+local sch_elem "sch_basek1 sch_base01 sch_base02 sch_base03 sch_base04 sch_base05"
+local sch_mid "sch_base06 sch_base07 sch_base08"
+local sch_hs "sch_base09 sch_base10 sch_base11 sch_base12"
+
+//Check School by level - Are the schools the same for all elementary kids in a given node in a given year
+{
+ds, has(varlabel base*)
+
+local vars_base_schools = "`r(varlist)'"
+
+di "`vars_base_schools'"
+
+foreach var of local vars_base_schools	{
+	di "`var'"
+	destring `var', gen(sch_`var')
+	}
+
+di "`sch_elem'"
+cap drop elem1 elem2
+cap drop mid1 mid2
+cap drop hs1 hs2
+
+egen elem1 = rowmin(`sch_elem')
+egen elem2 = rowmax(`sch_elem')
+
+egen mid1 = rowmin(`sch_mid')
+egen mid2 = rowmax(`sch_mid')
+
+egen hs1 = rowmin(`sch_hs')
+egen hs2 = rowmax(`sch_hs')
+
+di "elem"
+count if elem1 != elem2
+
+di "mid"
+count if mid1 != mid2
+
+di "hs"
+count if hs1 != hs2
+
+gen diff_elem = 0
+gen diff_mid  = 0
+gen diff_hs   = 0
+
+replace diff_elem = 1 if elem1 != elem2		//Do K and 5th graders in the same node attend the same base school 
+replace diff_mid  = 1 if mid1 != mid2		//Do 6th and 8th graders " "
+replace diff_hs   = 1 if hs1 != hs2			//Do 9th and 12th graders " "
+
+gen elem = elem1
+cap drop elem1 elem2
+cap drop mid1 mid2
+cap drop hs1 hs2
+
+/*
+tab diff_elem	//Everyone is 0 - 
+tab diff_mid	//212 
+tab diff_hs		//690
+
+duplicates report nodeid if diff_mid == 1
+duplicates report nodeid if diff_hs == 1
+
+//!!!!Probably should stick this in a log
+tab diff_elem year
+tab diff_mid year
+tab diff_hs	year
+*/
+}
+
+gsort nodeid year
+
+
+//!!!!Working with only nodes that have labels for now
+drop if nodeid == ""
+
+
+xtset obs year					// Way easier to do this in panel mode
+
+//Make Reassignment Indicator
+gen node_reassigned = 0			// Reassignment indicator
+replace node_reassigned = 1 if (L.elem != elem) & (year != 2000) & (L.obs == obs)
+
+/*
+tab node_reassigned 
+tab node_reassigned year
+*/
+
+gen new_node = nodeid
+
+save `nodes'
+
+//Clean School Characteristics
+use "${data}School_Characteristics_2000_2010.dta", clear
+
+bys school year: egen students_total = total(students)
+
+collapse (rawsum) students students_total, by(school year race)
+
+reshape wide students , i(school year) j(race)
+
+gen pct_na = 	100* students1 / students_total
+gen pct_asn =	100* students2 / students_total
+gen pct_hsp = 	100* students3 / students_total
+gen pct_blk = 	100* students4 / students_total
+gen pct_wht = 	100* students5 / students_total
+gen pct_multi = 100* students6 / students_total
+gen pct_opi = 	100* students7 / students_total
+
+drop students1 students2 students3 students4 students5 students6 students7
+
+label variable pct_na "Percentage of Student Body: Native American/Alaska Native"
+label variable pct_asn "Percentage of Student Body: Asian" 
+label variable pct_hsp "Percentage of Student Body: Hispanic"
+label variable pct_blk "Percentage of Student Body: Black"
+label variable pct_wht "Percentage of Student Body: White"
+label variable pct_multi "Percentage of Student Body: Multiple Races"
+label variable pct_opi "Percentage of Student Body: Other Pacific Islander"
+
+
+gen cur_school_code = school
+
+save "${scratch}`schchars'"
+
+
+//Use the Panel
+use "${fromwake}big_panel_2000_2010_DEID_original.dta", clear
+
+//Fix the nodes 
+gen new_node = substr(node, 1, 3) + "." + substr(node, 4, 4)
+replace new_node = nodeid if new_node == "."
+replace new_node = nodeid if nodeid != new_node & nodeid != ""
+
+//Generate Missing Node Indicator
+gen missing_node = 0
+replace missing_node =1 if new_node == "" & nodeid == ""
+
+/*
+tab year missing_node
+
+count if new_node != nodeid & nodeid != "" & new_node != ""
+*/
+
+//Merge on nodes file
+merge m:1 new_node year using `nodes', gen(_m_nd)
+
+drop if _m_nd == 2
+
+//School Indicators
+gen attend_base = 0
+gen attend_option = 0
+gen attend_neither = 0
+
+//Check for Base School
+replace attend_base = 0 if cur_school_code == .
+replace attend_base = 1 if cur_school_code == sch_basek1
+replace attend_base = 1 if cur_school_code == sch_base10
+replace attend_base = 1 if cur_school_code == sch_base11
+replace attend_base = 1 if cur_school_code == sch_base12
+
+forvalues i = 1/9	{
+	replace attend_base = 1 if cur_school_code == sch_base0`i'
+}
+
+//Check for Magnet Options
+local mag1 "emaggt emagag emagcm emagla emagmt emagcl  emagca emagin"
+local mag2 "emagcax emagibx emagmtx emaggcx  emagmux emaglax emaggtx  emagpex emagenx"
+local mag3 "emagxo emagxc emagxj emagxoz emagxcz emagxcx emaglaz emaginz emagmuz emagclz"
+
+local mag4 "eyrrd  etrad  eoptg eoptg2"
+local mag5 "mmagag1 mmagag2 mmaggt mmagib myrrd mmagibx  mmagux  mmagmux mtrad  mmagag mmagumx  mmagca mmagcax mmagcaz  moptg moptg2"
+local mag6 "hmaggt hmagse hmagibx hmaggtx hmagsex hmagecx htrad hoptg hoptg2 emaggc closest"
+
+forvalues x = 1/6	{
+	di "Macro: `x'"
+	foreach sch of local mag`x'	{
+		di "Variable: `sch'"
+		cap destring `sch', replace
+		replace attend_option = 1 if cur_school_code == `sch'
+			}
+}
+
+//Check for School Outside Choice Set
+replace attend_neither = 1 if attend_base == 0 & attend_option == 0
+
+//If Nodes/Schools didn't merge, don't use the attend indicator variables
+replace attend_base = . if _m_nd == .
+replace attend_option = . if _m_nd == .
+replace attend_neither = . if _m_nd == .
+
+/*
+tab attend_base, missing
+tab attend_base year, missing
+*/
+
+save "${scratch}big_panel_2000_2010_DEID_nodes.dta", replace
+
+//Merge on School Characteristics
+merge m:1 cur_school_code year using "${scratch}`schchars'", gen(_m_sc)
+
+drop if _m_sc == 2
+
+save "${scratch}big_panel_2000_2010_DEID_nodes_schcars.dta", replace
+
+
+cap log close
+
