@@ -1,0 +1,78 @@
+/*
+Stata 14
+********************************************
+Project: [Grant Name Here]
+    [Project Name Here]
+    [Sub Project if Needed]
+    
+Title: [Do File Title Here]
+Author: [Your Name Here]
+Date: DD MMMM YYYY
+ 
+version: #.#
+    Update DDMMMYY: [What did you do]
+   
+Purpose: [What does this thing do, generally]
+ 
+Working Directory:
+    [Where things generally go]
+Input:
+    [Input files here] 
+Intermediate:
+    [Any intermediate files to create here]
+Output:
+    [Output Files Here]
+ 
+Outline:
+    1)  [Matches the section in the code labeled ****1. [Name]****]
+    2)  [Matches the section in the code labeled ****2. [Name]****]
+    3)  [Matches the section in the code labeled ****3. [Name]****]
+********************************************
+*/
+
+//Initialize
+set more off
+cap log close
+clear
+ 
+//Macros
+{
+*[Globals for Filepaths here]
+//Locals
+*[Locals go here]
+ 
+//Regression Variables
+*[Or something else cool]
+ 
+//Regression Covariates
+*[Or something else cool]
+}
+ 
+//Tempfiles
+{
+*[Any Tempfiles created go here]
+}
+ 
+//Tempvars
+{
+*[Any Tempvars created go here]
+}
+ 
+//Date Time Stamp
+{* Prepare Date/Time Stamp
+local currdate = date(c(current_date),"dmy")
+local stryear = string(year(`currdate'))
+local strmonth = string(month(`currdate'))
+if length("`strmonth'") == 1 local strmonth = "0`strmonth'"
+local strday = string(day(`currdate'))
+if length("`strday'") == 1 local strday = "0`strday'"
+local currtime = c(current_time)
+local strhour = substr("`currtime'",1,2)
+local strminute = substr("`currtime'",4,2)
+local strsecond = substr("`currtime'",7,2)
+local DateTimeStamp = "`stryear'`strmonth'`strday'`strhour'`strminute'`strsecond'"
+display "`DateTimeStamp'"
+}
+
+********************************************
+cap log using [Name_Your_Log_Something_Useful]_`DateTimeStamp', text replace
