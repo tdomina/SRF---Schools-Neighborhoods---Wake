@@ -1,0 +1,109 @@
+
+
+
+
+//Initialize
+set more off
+set trace off
+clear
+
+//Macros
+{
+//Filepaths
+global longleaf "/proj/schleduc/"
+global wake "${longleaf}wake/"
+global logs "${wake}logs/"
+global data "${wake}data/"
+global fromwake "${data}original_xfer/"
+global scratch "${wake}scratch/"
+
+//Tempfiles
+[None]
+}
+
+cap log close
+cap log using "AEFP_Tables.txt", text replace
+
+*use "${scratch}big_panel_2000_2010_DEID_nodes_schcars.dta"
+
+local t1_vars_1 "eog_ma eog_rd "
+local t1_vars_2 ""
+
+local lo_year = 2000
+local hi_year = 2010
+
+//Descriptives by Year
+forvalues x = `lo_year'/`hi_year' {
+	di "Year " `x'
+	
+	//Denominator
+	qui count if year == `x'
+	local total_students_year = `r(N)' 
+  
+	/*
+	foreach var of local t1_vars_1  {
+    }
+	*/
+	 
+	//Gender Percentages
+	qui count if year == `x' & male == 1
+	local students_pct_male_`x' = 100*(`r(N)' / `total_students_year')
+	di "Year Male " `students_pct_male_`x''
+
+	//Race Percentages
+	forvalues y = 1/7 {
+		di `y'
+		qui count if race_eth == `y' & year == `x'
+		local students_num = `r(N)'
+		local students_pct_`x'_`y' = 100*(`students_num' / `total_students_year')
+		di "Year " `x' " Race " `y' " "`students_pct_`x'_`y''
+	}
+	
+	//Test Scores
+	qui sum eog_rd
+	local scores_rd_`x' = r(mean)
+  
+	qui sum eog_ma
+	local scores_ma_`x' = r(mean)
+
+	//Reassignment
+	qui sum node_reassigned if year == `x'
+	local reassigned_`x' = r(mean)
+	
+}
+
+
+//By Reassignment Status
+
+forvalues z = 0/1	{
+	preserve
+	keep if node_reassigned == `z'
+	
+	//Denominator
+	qui count
+	local students_num_`z' = r(N)
+	
+	//Male
+	qui sum male
+	local students_pct_male_re_`z' = 100* r(mean)
+	
+	forvalues y = 1/7	{
+		di `y'
+		qui count if race_eth == `y'
+		local students_num = `r(N)'
+		local students_pct_`y'_re_`z' = 100*(`students_num' / `students_num_`z'')
+		di "Race " `y' " Reassignment = " `z' " " students_pct_`y'_re_`z'
+	}
+	
+	//Test Scores
+	qui sum eog_rd
+	local scores_rd_re_`z' = r(mean)
+  
+	qui sum eog_ma
+	local scores_ma_re_`z' = r(mean)
+	
+}
+
+
+
+cap log close
