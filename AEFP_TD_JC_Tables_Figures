@@ -1,7 +1,3 @@
-
-
-
-
 //Initialize
 set more off
 set trace off
@@ -18,13 +14,12 @@ global fromwake "${data}original_xfer/"
 global scratch "${wake}scratch/"
 
 //Tempfiles
-[None]
 }
 
 cap log close
 cap log using "AEFP_Tables.txt", text replace
 
-*use "${scratch}big_panel_2000_2010_DEID_nodes_schcars.dta"
+use "${scratch}big_panel_2000_2010_DEID_nodes_schcars.dta"
 
 local t1_vars_1 "eog_ma eog_rd "
 local t1_vars_2 ""
@@ -32,14 +27,28 @@ local t1_vars_2 ""
 local lo_year = 2000
 local hi_year = 2010
 
+local row = 2
+local col = 1
+
+//Initialize Excel Sheet
+putexcel set "${scratch}AEFP_Table_Test.xls", sheet(Sheet1) modify
+
 //Descriptives by Year
 forvalues x = `lo_year'/`hi_year' {
+	local ++col
+	local row = 2
+	
 	di "Year " `x'
 	
 	//Denominator
 	qui count if year == `x'
 	local total_students_year = `r(N)' 
-  
+	
+	local Cell = char(64+`col') + string(`row')
+	putexcel `Cell' = `total_students_year'
+	
+	local ++row
+	
 	/*
 	foreach var of local t1_vars_1  {
     }
@@ -48,7 +57,13 @@ forvalues x = `lo_year'/`hi_year' {
 	//Gender Percentages
 	qui count if year == `x' & male == 1
 	local students_pct_male_`x' = 100*(`r(N)' / `total_students_year')
-	di "Year Male " `students_pct_male_`x''
+*	di "Year Male " `students_pct_male_`x''
+	
+	local Cell = char(64+`col') + string(`row')
+	putexcel `Cell' = `students_pct_male_`x'', nformat(##.##)
+	
+	local ++ row
+	
 
 	//Race Percentages
 	forvalues y = 1/7 {
@@ -56,19 +71,38 @@ forvalues x = `lo_year'/`hi_year' {
 		qui count if race_eth == `y' & year == `x'
 		local students_num = `r(N)'
 		local students_pct_`x'_`y' = 100*(`students_num' / `total_students_year')
-		di "Year " `x' " Race " `y' " "`students_pct_`x'_`y''
+		*di "Year " `x' " Race " `y' " " `students_pct_`x'_`y''
+		
+		local Cell = char(64+`col') + string(`row')
+		putexcel `Cell' = `students_pct_`x'_`y'', nformat("##.##")
+	
+		local ++ row
+
 	}
 	
 	//Test Scores
 	qui sum eog_rd
 	local scores_rd_`x' = r(mean)
-  
+		
+	local Cell = char(64+`col') + string(`row')
+	putexcel `Cell' = `scores_rd_`x'', nformat("###.##")
+	
+	local ++ row  
+	
 	qui sum eog_ma
 	local scores_ma_`x' = r(mean)
+	
+	local Cell = char(64+`col') + string(`row')
+	putexcel `Cell' = `scores_ma_`x'', nformat("###.##")
+	
+	local ++ row  
 
 	//Reassignment
 	qui sum node_reassigned if year == `x'
 	local reassigned_`x' = r(mean)
+	
+	local Cell = char(64+`col') + string(`row')
+	putexcel `Cell' = `reassigned_`x'', nformat("##.##")
 	
 }
 
@@ -92,7 +126,7 @@ forvalues z = 0/1	{
 		qui count if race_eth == `y'
 		local students_num = `r(N)'
 		local students_pct_`y'_re_`z' = 100*(`students_num' / `students_num_`z'')
-		di "Race " `y' " Reassignment = " `z' " " students_pct_`y'_re_`z'
+		di "Race " `y' " Reassignment = " `z' " " `students_pct_`y'_re_`z''
 	}
 	
 	//Test Scores
@@ -102,6 +136,7 @@ forvalues z = 0/1	{
 	qui sum eog_ma
 	local scores_ma_re_`z' = r(mean)
 	
+	restore
 }
 
 
