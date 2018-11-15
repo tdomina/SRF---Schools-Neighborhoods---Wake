@@ -14,10 +14,13 @@ global fromwake "${data}original_xfer/"
 global scratch "${wake}scratch/"
 
 //Tempfiles
+tempfile nodes
+tempfile schcars
 }
 
 cap log close
 cap log using "AEFP_Tables.txt", text replace
+
 
 use "${scratch}big_panel_2000_2010_DEID_nodes_schcars.dta"
 
@@ -30,7 +33,6 @@ local hi_year = 2010
 local row = 2
 local col = 1
 
-//Initialize Excel Sheet
 putexcel set "${scratch}AEFP_Table_Test.xls", sheet(Sheet1) modify
 
 //Descriptives by Year
@@ -99,7 +101,7 @@ forvalues x = `lo_year'/`hi_year' {
 
 	//Reassignment
 	qui sum node_reassigned if year == `x'
-	local reassigned_`x' = r(mean)
+	local reassigned_`x' = 100* r(mean)
 	
 	local Cell = char(64+`col') + string(`row')
 	putexcel `Cell' = `reassigned_`x'', nformat("##.##")
@@ -109,32 +111,68 @@ forvalues x = `lo_year'/`hi_year' {
 
 //By Reassignment Status
 
+putexcel set "${scratch}AEFP_Table_Test.xls", sheet(Sheet2) modify
+
+local col = 1
+local row = 1
+
 forvalues z = 0/1	{
+	local row = 2
+	local ++col
+	 
 	preserve
 	keep if node_reassigned == `z'
 	
 	//Denominator
-	qui count
+	qui unique encrypted_sid
 	local students_num_`z' = r(N)
+	
+	local Cell = char(64+`col') + string(`row')
+	putexcel `Cell' = `students_num_`z''
+	
+	local ++row
 	
 	//Male
 	qui sum male
 	local students_pct_male_re_`z' = 100* r(mean)
 	
+	local Cell = char(64+`col') + string(`row')
+	putexcel `Cell' = `students_pct_male_re_`z''
+	
+	local ++row
+		
 	forvalues y = 1/7	{
 		di `y'
 		qui count if race_eth == `y'
 		local students_num = `r(N)'
 		local students_pct_`y'_re_`z' = 100*(`students_num' / `students_num_`z'')
 		di "Race " `y' " Reassignment = " `z' " " `students_pct_`y'_re_`z''
+	
+		local Cell = char(64+`col') + string(`row')
+		putexcel `Cell' = `students_pct_`y'_re_`z''
+	
+		local ++row
+	
 	}
 	
 	//Test Scores
 	qui sum eog_rd
 	local scores_rd_re_`z' = r(mean)
   
+	local Cell = char(64+`col') + string(`row')
+	putexcel `Cell' = `scores_rd_re_`z''
+	
+	local ++row
+	
+  
 	qui sum eog_ma
 	local scores_ma_re_`z' = r(mean)
+
+	local Cell = char(64+`col') + string(`row')
+	putexcel `Cell' = `scores_ma_re_`z''
+	
+	local ++row
+
 	
 	restore
 }
