@@ -1,10 +1,13 @@
+//Header
+{
 /*
 Stata 14
 ********************************************
-Project: [Grant Name Here]
-    [Project Name Here]
+Project: Smith Richardson Foundation 
+Socioeconomic Segregation and Educational Opportunity: A Research Partnership with the Wake County Public Schools
     [Sub Project if Needed]
     
+
 Title: [Do File Title Here]
 Author: [Your Name Here]
 Date: DD MMMM YYYY
@@ -29,7 +32,10 @@ Outline:
     3)  [Matches the section in the code labeled ****3. [Name]****]
 ********************************************
 */
+}
 
+//Front Matter
+{
 //Initialize
 set more off
 cap log close
@@ -37,7 +43,14 @@ clear
  
 //Macros
 {
-*[Globals for Filepaths here]
+//Filepaths
+global longleaf "/proj/schleduc/"
+global wake "${longleaf}wake/"
+global logs "${wake}logs/"
+global data "${wake}data/"
+global fromwake "${data}original_xfer/"
+global scratch "${wake}scratch/"
+
 //Locals
 *[Locals go here]
  
@@ -59,7 +72,8 @@ clear
 }
  
 //Date Time Stamp
-{* Prepare Date/Time Stamp
+{
+* Prepare Date/Time Stamp
 local currdate = date(c(current_date),"dmy")
 local stryear = string(year(`currdate'))
 local strmonth = string(month(`currdate'))
@@ -73,6 +87,8 @@ local strsecond = substr("`currtime'",7,2)
 local DateTimeStamp = "`stryear'`strmonth'`strday'`strhour'`strminute'`strsecond'"
 display "`DateTimeStamp'"
 }
+}
 
 ********************************************
 cap log using [Name_Your_Log_Something_Useful]_`DateTimeStamp', text replace
+
