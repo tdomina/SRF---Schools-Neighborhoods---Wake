@@ -8,7 +8,7 @@ global longleaf "/proj/schleduc/"
 global wake "${longleaf}wake/"
 global logs "${wake}logs/"
 global data "${wake}data/"
-global fromwake "${data}original_transfer"
+global fromwake "${data}original_xfer/"
 
 cap log close
 
