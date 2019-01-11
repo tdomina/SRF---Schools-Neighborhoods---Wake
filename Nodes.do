@@ -86,6 +86,7 @@ gsort nodeid year
 drop if nodeid == ""
 
 xtset obs year
+gsort obs year
 
 gen node_reassigned = 0
 replace node_reassigned = 1 if (L.elem != elem) & (year != 2000) & (L.obs == obs)
