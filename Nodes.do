@@ -1,9 +1,18 @@
-set trace off
+//Initialize
 set more off
+set trace off
 clear
 
+//Macros
+global longleaf "/proj/schleduc/"
+global wake "${longleaf}wake/"
+global logs "${wake}logs/"
+global data "${wake}data/"
+global fromwake "${data}original_xfer/"
 
-use "C:\Users\JaysC\Dropbox\Documents\nodes_2000_2014.dta", clear
+cap log close
+
+use "${fromwake}nodes_2000_2014.dta", clear
 
 destring yr, gen(year)
 destring nodeid, gen(node_num)
