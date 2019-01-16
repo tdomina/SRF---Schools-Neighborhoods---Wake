@@ -15,6 +15,7 @@ cap log close
 use "${fromwake}nodes_2000_2014.dta", clear
 
 destring yr, gen(year)
+year = year + 1 		//Need this for year to work right
 destring nodeid, gen(node_num)
 
 egen obs = group(nodeid)
