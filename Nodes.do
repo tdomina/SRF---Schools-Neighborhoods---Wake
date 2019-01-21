@@ -14,9 +14,10 @@ cap log close
 
 use "${fromwake}nodes_2000_2014.dta", clear
 
-//Fix 2010 Node Variables
-{
 
+//Fix 2010 Node Variables if they haven't been fixed already
+qui count if yr == "1999"
+if r(N) ==0 {
 tempfile nodes2010
 
 preserve
