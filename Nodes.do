@@ -14,6 +14,78 @@ cap log close
 
 use "${fromwake}nodes_2000_2014.dta", clear
 
+//Fix 2010 Node Variables
+{
+
+tempfile nodes2010
+
+preserve
+
+keep if yr == "2010"
+
+//Bunch of locals for variable lists
+qui ds
+local allvars = "`r(varlist)'"
+
+qui ds, has(type numeric)
+local varsnum = "`r(varlist)'"
+
+qui ds, has(type string)
+local varsstr = "`r(varlist)'"
+
+qui count 
+local observations = r(N)
+
+foreach var of local varsnum	{
+	cap qui count if `var' == .
+	local emptyobs = r(N)
+	if `emptyobs' == `observations'	{
+		local todropnum `todropnum' `var'
+	}
+}
+
+foreach var of local varsstr	{
+	cap qui count if `var' == ""
+	local emptyobs = r(N)
+	if `emptyobs' == `observations' {
+		local todropstr `todropstr' `var'
+	}
+}
+
+//No idea why this doesn't work
+/*
+local dropvars : list allvars - todropnum - todropstr
+*/
+
+foreach var of local todropnum	{
+*	di "`var'"
+	drop `var'
+	}
+
+foreach var of local todropstr {
+*	di "`var'"
+	drop `var'
+	}
+	
+qui ds
+
+local remainingvars = r(varlist)
+
+foreach var of local remainingvars	{
+	local lowervar = lower("`var'")
+	cap qui rename `var' `lowervar'
+	}
+
+save `nodes2010', replace
+
+restore
+
+drop if yr == "2010"
+
+append using `nodes2010', force
+
+}
+
 destring yr, gen(year)
 year = year + 1 		//Need this for year to work right
 destring nodeid, gen(node_num)
